@@ -1,10 +1,9 @@
 import os
-from flask import Flask, request
+from flask import Flask, request, jsonify
 import requests
 
 app = Flask(__name__)
 
-# Bunları Render panelinden gireceğiz, koda yazmıyoruz.
 PAGE_ACCESS_TOKEN = os.environ.get('PAGE_ACCESS_TOKEN')
 VERIFY_TOKEN = os.environ.get('VERIFY_TOKEN')
 
@@ -17,26 +16,36 @@ def verify():
 @app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.json
-    try:
-        if data.get('object') == 'instagram':
-            for entry in data.get('entry', []):
-                for change in entry.get('changes', []):
-                    if change.get('field') == 'comments':
-                        comment_id = change['value']['id']
-                        user_name = change['value']['from']['username']
-                        # Kendi hesabına cevap vermemesi için
-                        if user_name != 'mfatihorucu':
-                            send_dm(comment_id)
-    except: pass
+    # --- KRİTİK LOG: Meta'dan gelen her şeyi görmemizi sağlar ---
+    print("Meta'dan Gelen Veri:", data) 
+    
+    if data.get('object') == 'instagram':
+        for entry in data.get('entry', []):
+            for change in entry.get('changes', []):
+                # Alan ismini kontrol edelim
+                field = change.get('field')
+                print(f"Değişiklik Alanı: {field}")
+                
+                if field == 'comments':
+                    comment_id = change['value']['id']
+                    user_name = change['value']['from']['username']
+                    
+                    print(f"Yorum Yakalandı! Yazan: {user_name}, ID: {comment_id}")
+                    
+                    if user_name != 'mfatihorucu':
+                        send_dm(comment_id)
+    
     return "OK", 200
 
 def send_dm(comment_id):
-    url = "https://graph.facebook.com/v23.0/me/messages"
+    # API versiyonunu v19.0 olarak sabitleyelim (En kararlısı)
+    url = "https://graph.facebook.com/v19.0/me/messages"
     payload = {
         "recipient": {"comment_id": comment_id},
         "message": {"text": "Otomatik Yanıt Sistemimiz Aktif! 🚀"}
     }
-    requests.post(url, json=payload, params={"access_token": PAGE_ACCESS_TOKEN})
+    response = requests.post(url, json=payload, params={"access_token": PAGE_ACCESS_TOKEN})
+    print(f"DM Gönderim Durumu: {response.status_code}, Cevap: {response.text}")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
