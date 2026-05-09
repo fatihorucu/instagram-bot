@@ -14,7 +14,6 @@ def verify():
     return "Hatalı Doğrulama", 403
 
 @app.route('/webhook', methods=['POST'])
-@app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.json
     # Bu satır sayesinde ne gelirse gelsin logda göreceğiz
