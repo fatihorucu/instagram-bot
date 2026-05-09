@@ -14,29 +14,30 @@ def verify():
     return "Hatalı Doğrulama", 403
 
 @app.route('/webhook', methods=['POST'])
+@app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.json
-    # --- KRİTİK LOG: Meta'dan gelen her şeyi görmemizi sağlar ---
-    print("Meta'dan Gelen Veri:", data) 
+    # Bu satır sayesinde ne gelirse gelsin logda göreceğiz
+    print("GELEN VERİ YAPISI:", data.keys()) 
     
     if data.get('object') == 'instagram':
         for entry in data.get('entry', []):
-            for change in entry.get('changes', []):
-                # Alan ismini kontrol edelim
-                field = change.get('field')
-                print(f"Değişiklik Alanı: {field}")
-                
-                if field == 'comments':
-                    comment_id = change['value']['id']
-                    user_name = change['value']['from']['username']
-                    
-                    print(f"Yorum Yakalandı! Yazan: {user_name}, ID: {comment_id}")
-                    
-                    if user_name != 'mfatihorucu':
-                        send_dm(comment_id)
-    
-    return "OK", 200
+            # Eğer Meta YORUM gönderirse burası çalışır
+            if 'changes' in entry:
+                for change in entry.get('changes', []):
+                    if change.get('field') == 'comments':
+                        comment_id = change['value']['id']
+                        user_name = change['value']['from']['username']
+                        print(f"EVET! Yorum yakalandı: {user_name}")
+                        if user_name != 'mfatihorucu':
+                            send_dm(comment_id)
+            
+            # Eğer Meta DM gönderirse (senin loglarındaki gibi) burası çalışır
+            elif 'messaging' in entry:
+                print("DİKKAT: Meta yorum yerine DM verisi gönderdi. Webhook ayarlarını kontrol et!")
 
+    return "OK", 200
+    
 def send_dm(comment_id):
     # API versiyonunu v19.0 olarak sabitleyelim (En kararlısı)
     url = "https://graph.facebook.com/v19.0/me/messages"
